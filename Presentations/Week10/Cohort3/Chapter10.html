@@ -3,7 +3,7 @@
   <head>
     <title>Advanced R Chapter 10</title>
     <meta charset="utf-8" />
-    <meta name="author" content="Sam Bryce-Smith, R4DS Reading Group, Cohort 3" />
+    <meta name="author" content="Sam Bryce-Smith, R4DS Reading Group, Cohort 3 (27/10/20)" />
     <link rel="stylesheet" href="xaringan-themer.css" type="text/css" />
   </head>
   <body>
@@ -12,7 +12,7 @@ class: center, middle, inverse, title-slide
 
 # Advanced R Chapter 10
 ## Function Factories
-### Sam Bryce-Smith, R4DS Reading Group, Cohort 3
+### Sam Bryce-Smith, R4DS Reading Group, Cohort 3 (27/10/20)
 
 ---
 
@@ -24,9 +24,9 @@ class: center, middle, inverse, title-slide
 
 # What are function factories?
 
-- Function factories are functions that produce functions
-- *power1* - function factory
-- *square* &amp; *cube* - 'manufactured' function produced by function factory (and assigned to name)
+- **Function factories are functions that produce functions**
+- **power1** - function factory
+- **square** &amp; **cube** - 'manufactured' functions produced by function factory (and assigned to name)
 
 
 ```r
@@ -56,70 +56,17 @@ cube(2)
 
 ---
 
-### How do they work? A recap on key concepts of functions
+### How do function factories work? A recap on key concepts of functions
 
-- How does R find the value of exponent?
+- **A new environment is created every time a function is called**
+  - Function is executed inside this environment (**execution environment**)
 
-- A new environment is created every time a function is called
-  - Function is executed inside this environment (execution environment)
-  - Binds/captures the enclosing environment when it is created (function environment)
-    - (By default this is the current environment)
-  
+- **Binds/captures the environment in which the function was created/defined** 
+  - This is coined the **enclosing environment** 
 
-```r
-y &lt;- 1
-f &lt;- function(x) x + y
-fn_env(f)
-```
-
-```
-## &lt;environment: R_GlobalEnv&gt;
-```
-
-```r
-env_print(f)
-```
-
-```
-## &lt;environment: global&gt;
-## parent: &lt;environment: package:purrr&gt;
-## bindings:
-##  * x: &lt;named list&gt;
-##  * y: &lt;dbl&gt;
-##  * f1: &lt;fn&gt;
-##  * power1: &lt;fn&gt;
-##  * z: &lt;dbl&gt;
-##  * f2: &lt;fn&gt;
-##  * power2: &lt;fn&gt;
-##  * base_bins: &lt;fn&gt;
-##  * pick: &lt;fn&gt;
-##  * cube: &lt;fn&gt;
-##  * core: &lt;gg&gt;
-##  * boot_permute: &lt;fn&gt;
-##  * .Random.seed: &lt;int&gt;
-##  * g1: &lt;fn&gt;
-##  * g2: &lt;fn&gt;
-##  * binwidth_bins: &lt;fn&gt;
-##  * expected_q3: &lt;named list&gt;
-##  * funs: &lt;named list&gt;
-##  * sd: &lt;dbl&gt;
-##  * df: &lt;df[,2]&gt;
-##    * ... with 15 more bindings
-```
-
-```r
-#&gt; &lt;environment: R_GlobalEnv&gt;
-```
-
-- Lexical scoping - heirarchy to finding names
-  - Current function (exection environment)
-  - Where function was defined (environment enclosing function, function environment)
-  - Further levels up (all the way up to global environment)
-  
-  
 ---
 
-# How do they work? A recap on key concepts of functions
+### How do function factories work? A recap on key concepts of functions
 
 
 ```r
@@ -128,7 +75,6 @@ power1 &lt;- function(exponent) {
     x ^ exponent
   }
 }
-
 square &lt;- power1(2)
 cube &lt;- power1(3)
 
@@ -147,14 +93,16 @@ cube(2)
 ## [1] 8
 ```
 
-- power1(2) creates execution environment (where exponent = 2)
-- function(x) is created, and binds the environment enclosing it (the execution environment of power1(2))
+- `power1(exponent)` creates an execution environment every time it is run
+
+- `function(x)` is created and binds the environment enclosing it 
+  - the **execution environment** of `power1(exponent)`
 
 
 ---
-# Environments
+## Environments
 
-square and cube have the same function body, but two different environments.
+`square` and `cube` have the same function body, but two different environments.
 
 
 ```r
@@ -165,7 +113,7 @@ square
 ## function(x) {
 ##     x ^ exponent
 ##   }
-## &lt;environment: 0x55877f7a2948&gt;
+## &lt;environment: 0x55fa99140940&gt;
 ```
 
 ```r
@@ -176,13 +124,15 @@ cube
 ## function(x) {
 ##     x ^ exponent
 ##   }
-## &lt;bytecode: 0x55877efa3140&gt;
-## &lt;environment: 0x5587808969d0&gt;
+## &lt;bytecode: 0x55fa98165360&gt;
+## &lt;environment: 0x55fa9890e6c0&gt;
 ```
 
+- How are the functions finding exponent?
+- Why is the value of exponent different for `square` and `cube`?
 ---
 
-# square and cube have bindings to exponent
+### square and cube have bindings to exponent
 
 
 ```r
@@ -190,7 +140,7 @@ env_print(square)
 ```
 
 ```
-## &lt;environment: 0x55877f7a2948&gt;
+## &lt;environment: 0x55fa99140940&gt;
 ## parent: &lt;environment: global&gt;
 ## bindings:
 ##  * exponent: &lt;dbl&gt;
@@ -201,17 +151,18 @@ env_print(cube)
 ```
 
 ```
-## &lt;environment: 0x5587808969d0&gt;
+## &lt;environment: 0x55fa9890e6c0&gt;
 ## parent: &lt;environment: global&gt;
 ## bindings:
 ##  * exponent: &lt;dbl&gt;
 ```
 
-Square and cube have bindings to exponent - defined in the execution environment of power1 (the function factory)
+`square` and `cube` have bindings to exponent 
+  - How can we extract the value of `env`?
 
 ---
 
-# What are values of exponent in square and cube?
+### What are values of exponent in square and cube?
 
 use *rlang::fn_env()* to extract the function environment
 
@@ -232,7 +183,7 @@ fn_env(cube)$exponent
 ## [1] 3
 ```
 
-exponent is bound to different values in each case
+exponent is bound to different values in `square` and `cube`
 
 ---
 
@@ -253,12 +204,14 @@ square(2)
 ## [1] 8
 ```
 
-- Value bound to x has changed between calling the *factory function* (to create the function) and calling the *manunfactured function* (when value of x is needed and looked up).
+Value bound to x has changed between 
+  - calling the *factory function* (to create the function)
+  - and calling the *manunfactured function* (when value of x is needed and looked up).
 ---
 
-# Be sure to use (the) force()
+## Be sure to use (the) force()
 
-If the argument is used by the manufactured function, you should force it's evaluation with **force()**
+If the argument to the function factory is used by the manufactured function, you should force its evaluation with **force()**
 
 
 ```r
@@ -284,15 +237,16 @@ square(2)
 
 - Function factories let you maintain state across invocations
   - Manufactured functions have their own, constant enclosing environment
+      - enclosing environment = where the function was defined
+      - (the execution environment of the function factory) 
   
-`&lt;-` - binds a value to a name in the **current environment**
-`&lt;&lt;-` - *rebinds** an existing name found in a **parent environment**
+- `&lt;-` - binds a value to a name in the **current environment**
+- `&lt;&lt;-` - *rebinds** an existing name found in a **parent environment**
 
 
 ```r
 new_counter &lt;- function() {
   i &lt;- 0
-  
   function() {
     i &lt;&lt;- i + 1
     i
@@ -301,7 +255,14 @@ new_counter &lt;- function() {
 
 counter_one &lt;- new_counter()
 counter_two &lt;- new_counter()
+```
 
+---
+
+# Stateful functions
+
+
+```r
 counter_one()
 ```
 
@@ -326,13 +287,14 @@ counter_two()
 ```
 
 - Manufactured functions have their own unique enclosing environment 
-- counter_one and counter_two will have independent counnts
-- Best used in moderation
+- counter_one and counter_two will have independent counts
+- `&lt;&lt;-` is best used in moderation...
 
 ---
 # Garbage collection
 
-As manufactured functions bind the execution environment of the function factory, temporary objects that are no longer needed won't be removed.
+- Manufactured functions bind the execution environment of the function factory
+  - Temporary objects that are no longer needed won't be removed.
 
 You should explicitly use **rm()** to unbind objects in function factories
 
@@ -344,35 +306,38 @@ f1 &lt;- function(n) {
   function() m
 }
 
-g1 &lt;- f1(1e6)
-lobstr::obj_size(g1)
-```
-
-```
-## 8,013,496 B
-```
-
-```r
-#&gt; 8,013,104 B
-
 f2 &lt;- function(n) {
   x &lt;- runif(n)
   m &lt;- mean(x)
   rm(x)
   function() m
 }
+```
 
+---
+# Garbage collection
+
+
+```r
+g1 &lt;- f1(1e6)
+lobstr::obj_size(g1)
+```
+
+```
+## 8,010,448 B
+```
+
+```r
 g2 &lt;- f2(1e6)
 lobstr::obj_size(g2)
 ```
 
 ```
-## 13,336 B
+## 10,288 B
 ```
 
-```r
-#&gt; 12,944 B
-```
+
+---
 
 # 10.2.6 Exercises
 
@@ -386,18 +351,11 @@ force
 ```
 ## function (x) 
 ## x
-## &lt;bytecode: 0x558777fe47c8&gt;
+## &lt;bytecode: 0x55fa8d758d78&gt;
 ## &lt;environment: namespace:base&gt;
 ```
 
-```r
-#&gt; function (x) 
-#&gt; x
-#&gt; &lt;bytecode: 0xce23a0&gt;
-#&gt; &lt;environment: namespace:base&gt;
-```
-
-My answer - being explicit can help with clarity of code... 
+**My answer** - being explicit can help with clarity of code... 
 
 
 ```r
@@ -408,6 +366,20 @@ power2 &lt;- function(exp) {
   }
 }
 
+power2_just_exp &lt;- function(exp) {
+  exp
+  function(x) {
+    x ^ exp
+  }
+}
+```
+
+---
+
+# 10.2.6 Exercises
+
+
+```r
 x &lt;- 2
 square &lt;- power2(x)
 x &lt;- 3
@@ -419,13 +391,6 @@ square(2)
 ```
 
 ```r
-power2_just_exp &lt;- function(exp) {
-  exp
-  function(x) {
-    x ^ exp
-  }
-}
-
 z &lt;- 2
 square_just_exp &lt;- power2_just_exp(z)
 z &lt;- 3
@@ -436,23 +401,26 @@ square_just_exp(2)
 ## [1] 4
 ```
 
----
-# 10.2.6 Exercises
-
-2. What do approxfun() and ecdf() do?
-
-
----
+- Behaviour is same when use `force(exp)` or just `exp`
+- With `force(exp)`, it is clearer you want to evaluate the value of `exp`
 
 ---
 # 10.2.6 Exercises
 
-3. Create a function pick() that takes an index, i, as an argument and returns a function with an argument x that subsets x with i.
+**2. What do approxfun() and ecdf() do?**
 
-My answer -
-want i to be input to function factory
-Want to make sure i is evaluated when function is called
-Want manufacured function to have binding to i
+(I was too lazy to try this exercise - sorry!)
+---
+
+---
+# 10.2.6 Exercises
+
+**3. Create a function pick() that takes an index, i, as an argument and returns a function with an argument x that subsets x with i.**
+
+My answer:
+- Want `i` to be input to function factory
+- Want to make sure **i is evaluated** when factory function is called
+- Want manufactured function to have binding to `i`
 
 
 ```r
@@ -478,20 +446,20 @@ identical(expected_q3,
 
 # 10.2.6 Exercises
 
-4. Create a function that creates functions that compute the ith central moment of a numeric vector.
+**4. Create a function that creates functions that compute the ith central moment of a numeric vector.**
 
+(Again I was too lazy - sorry!)
 
 
 ---
 
 # 10.2.6 Exercises
 
-5. What happens if you don’t use a closure? Make predictions, then verify with the code below.
+**5. What happens if you don’t use a closure? Make predictions, then verify with the code below.**
 
-The function will still count the number of invocations, but i isn't captured in enclosing environment of new_counter2 (it's in global environment)
+The function will still count the number of invocations, but `i` **isn't captured in enclosing environment of new_counter2** (it's in global environment)
 
-I could modify i without having to call the function
-
+`i` **could be modified without having to call the function**
 
 
 ```r
@@ -500,7 +468,6 @@ new_counter2 &lt;- function() {
   i &lt;&lt;- i + 1
   i
 }
-
 new_counter2()
 ```
 
@@ -516,6 +483,12 @@ new_counter2()
 ## [1] 2
 ```
 
+---
+# 10.2.6 Exercises
+
+**5. What happens if you don’t use a closure? Make predictions, then verify with the code below.**
+
+
 ```r
 i &lt;- 0
 new_counter2()
@@ -525,15 +498,17 @@ new_counter2()
 ## [1] 1
 ```
 
+- `new_counter2()` has been invoked 3 times, but `i` no longer reflects this
 ---
 
 # 10.2.6 Exercises
 
-6. What happens if you use &lt;- instead of &lt;&lt;-? Make predictions, then verify with the code below.
+**6. What happens if you use &lt;- instead of &lt;&lt;-? Make predictions, then verify with the code below.**
 
-Every time the function is called, i is updated in the execution environment only. So every time time the function is called again, i is still 0 (the enclosing environment for the manufactured function is constant unless bindings are updated with &lt;&lt;-)
+- Every time the function is called, `i` is updated in the execution environment only. 
+- So every time time the function is called again, `i` is still 0 (the *enclosing environment* for the manufactured function is *constant* unless bindings are updated with `&lt;&lt;-`)
 
-This should return 1 every time
+This should return 1 every time...
 
 
 ```r
@@ -547,12 +522,45 @@ new_counter3 &lt;- function() {
 ```
 
 ---
+# 10.2.6 Exercises
+
+**6. What happens if you use &lt;- instead of &lt;&lt;-? Make predictions, then verify with the code below.**
+
+
+```r
+new_counter_3 = new_counter3()
+
+
+new_counter_3()
+```
+
+```
+## [1] 1
+```
+
+```r
+new_counter_3()
+```
+
+```
+## [1] 1
+```
+
+```r
+new_counter_3()
+```
+
+```
+## [1] 1
+```
+
+---
 # Applications of function factories - ggplot2
 
-ggplot2 &amp; scales provide nice opportunity to use function factories
+- `ggplot2` &amp; `scales` provide a nice opportunity to use function factories
 
-*scales* provides functions to control details of axes and legends
-- the formatter functions are function factories 
+- `scales` provides functions to control details of axes and legends
+  - its formatter functions are function factories 
 
 
 ```r
@@ -565,17 +573,11 @@ comma_format()(y)
 ```
 
 ```r
-#&gt; [1] "12,345"    "123,456"   "1,234,567"
-
 number_format(scale = 1e-3, suffix = " K")(y)
 ```
 
 ```
 ## [1] "12 K"    "123 K"   "1 235 K"
-```
-
-```r
-#&gt; [1] "12 K"    "123 K"   "1 235 K"
 ```
 
 ---
@@ -590,40 +592,24 @@ core &lt;- ggplot(df, aes(x, y)) +
   geom_point() + 
   scale_x_continuous(breaks = 1, labels = NULL) +
   labs(x = NULL, y = NULL)
-  
-core
+
+#I've commented out because the plots come out funky...
+#core
+#core + scale_y_continuous(
+#  labels = comma_format()
+#)
+#core + scale_y_continuous(
+#  labels = number_format(scale = 1e-3, suffix = " K")
+#)
+#core + scale_y_continuous(
+#  labels = scientific_format()
+#)
 ```
-
-![](Chapter10_files/figure-html/unnamed-chunk-9-1.png)&lt;!-- --&gt;
-
-```r
-core + scale_y_continuous(
-  labels = comma_format()
-)
-```
-
-![](Chapter10_files/figure-html/unnamed-chunk-9-2.png)&lt;!-- --&gt;
-
-```r
-core + scale_y_continuous(
-  labels = number_format(scale = 1e-3, suffix = " K")
-)
-```
-
-![](Chapter10_files/figure-html/unnamed-chunk-9-3.png)&lt;!-- --&gt;
-
-```r
-core + scale_y_continuous(
-  labels = scientific_format()
-)
-```
-
-![](Chapter10_files/figure-html/unnamed-chunk-9-4.png)&lt;!-- --&gt;
 
 ---
 
 # Histograms - binwidth 
-- *geom_histogram(binwidth)* can accpet a function as the binwidth argument
+- `geom_histogram(binwidth)` can accept a function as the binwidth argument
 - This allows you to have **different binwidths for plots in different facets**
 
 
@@ -634,16 +620,14 @@ n &lt;- 100
 
 df &lt;- data.frame(x = rnorm(3 * n, sd = sd), sd = rep(sd, n))
 
-ggplot(df, aes(x)) + 
-  geom_histogram(binwidth = 2) + 
-  facet_wrap(~ sd, scales = "free_x") + 
-  labs(x = NULL)
+#ggplot(df, aes(x)) + 
+#  geom_histogram(binwidth = 2) + 
+#  facet_wrap(~ sd, scales = "free_x") + 
+#  labs(x = NULL)
 ```
 
-![](Chapter10_files/figure-html/unnamed-chunk-10-1.png)&lt;!-- --&gt;
 
-
-Given the wide variability in counts between 1, 5 &amp; 15, it is less clear to see the counts in 5 &amp; 15...
+Given the wide variability in counts between 1, 5 &amp; 15, the counts are difficult to see in 5 &amp; 15 and the distributions not so easy to compare...
 
 ---
 
@@ -670,13 +654,13 @@ binwidth_bins &lt;- function(n) {
 
 
 ```r
-ggplot(df, aes(x)) + 
-  geom_histogram(binwidth = binwidth_bins(20)) + 
-  facet_wrap(~ sd, scales = "free_x") + 
-  labs(x = NULL)
-```
+#ggplot(df, aes(x)) + 
+#  geom_histogram(binwidth = binwidth_bins(20)) + 
+#  facet_wrap(~ sd, scales = "free_x") + 
+#  labs(x = NULL)
 
-![](Chapter10_files/figure-html/unnamed-chunk-12-1.png)&lt;!-- --&gt;
+#Take a look in RStudio for plot...
+```
 
 ---
 
@@ -707,13 +691,11 @@ base_bins &lt;- function(type) {
 
 
 ```r
-ggplot(df, aes(x)) + 
-  geom_histogram(binwidth = base_bins("FD")) + 
-  facet_wrap(~ sd, scales = "free_x") + 
-  labs(x = NULL)
+#ggplot(df, aes(x)) + 
+#  geom_histogram(binwidth = base_bins("FD")) + 
+#  facet_wrap(~ sd, scales = "free_x") + 
+#  labs(x = NULL)
 ```
-
-![](Chapter10_files/figure-html/unnamed-chunk-14-1.png)&lt;!-- --&gt;
 
 ---
 
@@ -724,14 +706,14 @@ ggplot(df, aes(x)) +
 - Bootstrap resampling
 - Maximum likelihood estimation
 
-(Disclaimer - I only dove into bootstrap resampling, but I think it demonstrates previous concepts nicely)
+(Disclaimer - I only dove into **bootstrap resampling**. I think it demonstrates previous concepts nicely so I will present it here...)
 
 ---
 
 # Bootstrapping
 
-- resampling method
-- randomly sample with replacement (&amp; repeat numerous times)
+- Resampling method
+- Randomly sample with replacement (&amp; repeat numerous times)
 - Can be used to estimate statistics about a population
 
 ---
@@ -755,20 +737,15 @@ head(boot_mtcars1())
 ```
 
 ```
-## [1] 13.3 14.7 32.4 21.4 19.2 15.8
+## [1] 17.3 15.8 27.3 19.2 21.4 22.8
 ```
 
 ```r
-#&gt; [1] 16.4 22.8 22.8 22.8 16.4 19.2
 head(boot_mtcars1())
 ```
 
 ```
-## [1] 21.0 22.8 16.4 26.0 21.0 21.5
-```
-
-```r
-#&gt; [1] 17.8 18.7 30.4 30.4 16.4 21.0
+## [1] 15.5 19.2 14.7 32.4 27.3 15.8
 ```
 
 ---
@@ -794,7 +771,7 @@ head(boot_mtcars2())
 ```
 
 ```
-## [1] 21.39959 23.66597 31.75866 22.45261 17.80000 15.33090
+## [1] 25.74698 20.03675 24.19270 26.08372 23.06388 25.21523
 ```
 
 ```r
@@ -802,7 +779,7 @@ head(boot_mtcars2())
 ```
 
 ```
-## [1] 24.45596 23.66597 25.03800 20.40251 25.32212 16.18225
+## [1] 29.70459 27.90084 20.34280 20.45908 21.36451 20.09060
 ```
 
 ---
@@ -813,7 +790,7 @@ I haven't tackled any of these - sorry!
 
 ---
 
-### Combining function factories with functionals
+## Combining function factories with functionals
 
 - Create many power functions by iterating over named list
 
@@ -836,15 +813,7 @@ funs$root(64)
 ```
 
 ```r
-funs$root
-```
-
-```
-## function(x) {
-##     x ^ exponent
-##   }
-## &lt;bytecode: 0x55877efa3140&gt;
-## &lt;environment: 0x558786892de0&gt;
+#funs$root
 ```
 
 - Functions are stored in list *funs*
@@ -853,7 +822,7 @@ funs$root
 ---
 ### How to avoid prefixing function call with funs$
 
-- Can use *with()*
+- Can use `with()` to construct an environment with *list*, *dataframe* and others...
 
 
 ```r
@@ -863,9 +832,9 @@ with(funs, root(100))
 ```
 ## [1] 10
 ```
-- Only temporary
+- This approach is only temporary...
 
-- *attach()* &amp; *detach()* is longer lasting approach (but be careful)
+- `attach()` &amp; `detach()` is longer lasting approach (but be careful)
 
 ```r
 attach(funs)
@@ -906,7 +875,7 @@ root(100)
 ## [1] 10
 ```
 
-- Can be unbound later (*rlang::env_unbind()*), but names could have been rebound in intervening period
+- Can be unbound later with `rlang::env_unbind()`, but names could have been rebound in intervening period
   - Could end up deleting object not created by binding funs
   
 
@@ -940,8 +909,8 @@ My initial thoughts...
 # 10.5.1 - Exercises
 
 A - Depends on structure of `x`!
-- if x is a dataframe, then `f(x$z)`
-- if x is a list, then it could be any of the options!
+- if x is a **dataframe**, then `f(x$z)`
+- if x is a **list**, then it could be any of the options!
     
 
 ```r
