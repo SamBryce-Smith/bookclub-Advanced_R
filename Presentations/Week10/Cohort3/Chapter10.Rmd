@@ -8,7 +8,15 @@ output:
     css: xaringan-themer.css
     includes:
       after_body: insert-logo.html
+
 ---
+
+```{r required packages, include=FALSE}
+library(rlang)
+library(ggplot2)
+library(scales)
+library(purrr)
+```
 
 
 ```{r xaringan-themer, include = FALSE}
@@ -21,17 +29,9 @@ style_mono_light(
 )
 ```
 
-```{r required packages}
-library(rlang)
-library(ggplot2)
-library(scales)
-```
-
-
-
 # What are function factories?
 
-- Simply put, function factories are functions that produce functions
+- Function factories are functions that produce functions
 - *power1* - function factory
 - *square* & *cube* - 'manufactured' function produced by function factory (and assigned to name)
 
@@ -52,7 +52,7 @@ cube(2)
 
 ---
 
-# How do they work? A recap on key concepts of functions
+### How do they work? A recap on key concepts of functions
 
 - How does R find the value of exponent?
 
@@ -71,7 +71,7 @@ env_print(f)
 
 - Lexical scoping - heirarchy to finding names
   - Current function (exection environment)
-  - Where function was defined (function environment)
+  - Where function was defined (environment enclosing function, function environment)
   - Further levels up (all the way up to global environment)
   
   
@@ -79,7 +79,7 @@ env_print(f)
 
 # How do they work? A recap on key concepts of functions
 
-```{r a basic function factory}
+```{r a basic function factory returns}
 
 power1 <- function(exponent) {
   function(x) {
@@ -96,7 +96,7 @@ cube(2)
 
 - power1(2) creates execution environment (where exponent = 2)
 - function(x) is created, and binds the environment enclosing it (the execution environment of power1(2))
-- 
+
 
 ---
 # Environments
@@ -370,7 +370,313 @@ new_counter3 <- function() {
 ---
 # Applications of function factories - ggplot2
 
-Graphs
+ggplot2 & scales provide nice opportunity to use function factories
+
+*scales* provides functions to control details of axes and legends
+- the formatter functions are function factories 
+
+```{r}
+
+y <- c(12345, 123456, 1234567)
+comma_format()(y)
+#> [1] "12,345"    "123,456"   "1,234,567"
+
+number_format(scale = 1e-3, suffix = " K")(y)
+#> [1] "12 K"    "123 K"   "1 235 K"
+
+
+```
+
+---
+
+# ggplot scales accept functions for the label argument
+
+
+```{r}
+
+df <- data.frame(x = 1, y = y)
+core <- ggplot(df, aes(x, y)) + 
+  geom_point() + 
+  scale_x_continuous(breaks = 1, labels = NULL) +
+  labs(x = NULL, y = NULL)
+  
+core
+core + scale_y_continuous(
+  labels = comma_format()
+)
+core + scale_y_continuous(
+  labels = number_format(scale = 1e-3, suffix = " K")
+)
+core + scale_y_continuous(
+  labels = scientific_format()
+)
+
+
+```
+
+---
+
+# Histograms - binwidth 
+- *geom_histogram(binwidth)* can accpet a function as the binwidth argument
+- This allows you to have **different binwidths for plots in different facets**
+
+```{r}
+# construct some sample data with very different numbers in each cell
+sd <- c(1, 5, 15)
+n <- 100
+
+df <- data.frame(x = rnorm(3 * n, sd = sd), sd = rep(sd, n))
+
+ggplot(df, aes(x)) + 
+  geom_histogram(binwidth = 2) + 
+  facet_wrap(~ sd, scales = "free_x") + 
+  labs(x = NULL)
+```
+
+
+Given the wide variability in counts between 1, 5 & 15, it is less clear to see the counts in 5 & 15...
+
+---
+
+# Histograms - binwidth
+
+Use a function factory to get approximately the same number of observations in each bin
+- Input desired number of bins
+- Output function taking a numeric vector that returns a binwidth
+
+```{r}
+
+binwidth_bins <- function(n) {
+  force(n)
+  
+  function(x) {
+    (max(x) - min(x)) / n
+  }
+}
+
+```
+
+---
+
+# Histograms - binwidth
+
+```{r}
+ggplot(df, aes(x)) + 
+  geom_histogram(binwidth = binwidth_bins(20)) + 
+  facet_wrap(~ sd, scales = "free_x") + 
+  labs(x = NULL)
+
+```
+
+---
+
+# Histograms - binwidth
+
+- `class.Sturges()`, `nclass.scott()` and `nclass.FD()` are base functions to find optimal binwidth
+- Can wrap around these with a function factory
+
+```{r}
+base_bins <- function(type) {
+  fun <- switch(type,
+    Sturges = nclass.Sturges,
+    scott = nclass.scott,
+    FD = nclass.FD,
+    stop("Unknown type", call. = FALSE)
+  )
+  
+  function(x) {
+    (max(x) - min(x)) / fun(x)
+  }
+}
+
+```
+
+---
+
+# Histograms - binwidth
+
+```{r}
+ggplot(df, aes(x)) + 
+  geom_histogram(binwidth = base_bins("FD")) + 
+  facet_wrap(~ sd, scales = "free_x") + 
+  labs(x = NULL)
+```
+
+---
+
+# Function factories for statistics
+
+- Further examples for using function factories
+- The Box-Cox transformation
+- Bootstrap resampling
+- Maximum likelihood estimation
+
+(Disclaimer - I only dove into bootstrap resampling, but I think it demonstrates previous concepts nicely)
+
+---
+
+# Bootstrapping
+
+- resampling method
+- randomly sample with replacement (& repeat numerous times)
+- Can be used to estimate statistics about a population
+
+---
+
+# Bootstrapping
+
+```{r}
+
+boot_permute <- function(df, var) {
+  n <- nrow(df)
+  force(var)
+  
+  function() {
+    col <- df[[var]]
+    col[sample(n, replace = TRUE)]
+  }
+}
+
+boot_mtcars1 <- boot_permute(mtcars, "mpg")
+head(boot_mtcars1())
+#> [1] 16.4 22.8 22.8 22.8 16.4 19.2
+head(boot_mtcars1())
+#> [1] 17.8 18.7 30.4 30.4 16.4 21.0
+
+```
+
+---
+
+## Useful for parametric bootstrap
+- Fit model once, then explicitly remove temporary object (linear model objects are large)
+
+```{r}
+boot_model <- function(df, formula) {
+  mod <- lm(formula, data = df)
+  fitted <- unname(fitted(mod))
+  resid <- unname(resid(mod))
+  rm(mod)
+
+  function() {
+    fitted + sample(resid)
+  }
+} 
+
+boot_mtcars2 <- boot_model(mtcars, mpg ~ wt)
+head(boot_mtcars2())
+
+head(boot_mtcars2())
+
+
+```
+
+---
+
+# 10.4.4 Exercises
+
+I haven't tackled any of these - sorry!
+
+---
+
+### Combining function factories with functionals
+
+- Create many power functions by iterating over named list
+
+```{r}
+names <- list(
+  square = 2, 
+  cube = 3, 
+  root = 1/2, 
+  cuberoot = 1/3, 
+  reciprocal = -1
+)
+funs <- purrr::map(names, power1)
+
+funs$root(64)
+funs$root
+```
+
+- Functions are stored in list *funs*
+- calling function with prefix *funs$* could be annoying...
+
+---
+### How to avoid prefixing function call with funs$
+
+- Can use *with()*
+
+```{r}
+with(funs, root(100))
+```
+- Only temporary
+
+- *attach()* & *detach()* is longer lasting approach (but be careful)
+```{r}
+attach(funs)
+root(100)
+detach(funs)
+```
+
+---
+
+### How to avoid prefixing function call with funs$
+
+- Copy functions to global environment with *rlang::env_bind()*
+- (Pretty much permanent)
+
+```{r}
+rlang::env_bind(globalenv(), !!!funs)
+root(100)
+```
+
+- Can be unbound later (*rlang::env_unbind()*), but names could have been rebound in intervening period
+  - Could end up deleting object not created by binding funs
+  
+```{r}
+rlang::env_unbind(globalenv(), names(funs))
+```
+
+- more about quasiquotation - `!!!` - in **Section 19**...
+
+---
+
+# 10.5.1 - Exercises
+
+Q - **Which of the following commands is equivalent to with(x, f(z))?**
+
+- x$f(x$z).
+- f(x$z).
+- x$f(z).
+- f(z).
+- It depends.
+
+
+My initial thoughts...
+
+- If x is a list of functions as in previous example, then
+  - `x$f(z)` would be my answer 
+
+
+---
+
+# 10.5.1 - Exercises
+
+A - Depends on structure of `x`!
+- if x is a dataframe, then `f(x$z)`
+- if x is a list, then it could be any of the options!
+    
+```{r}
+f <- mean
+z <- 1
+x <- list(f = mean, z = 1)
+
+identical(with(x, f(z)), x$f(x$z))
+
+identical(with(x, f(z)), f(x$z))
+
+identical(with(x, f(z)), x$f(z))
+
+identical(with(x, f(z)), f(z))
+```
 
 ---
 
